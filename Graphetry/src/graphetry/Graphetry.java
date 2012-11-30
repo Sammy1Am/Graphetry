@@ -74,4 +74,13 @@ public class Graphetry {
             }
         }
     }
+    
+    /*
+     * NOTES:
+     * For limerick generation, only very start needs to be START and very end needs to be END.  Other
+     * lines are optional endings, and only need a START if the last one was an END.
+     * 
+     * Check on rhyming multiple words like "Nantuckett" and "cluck it". ;)
+     */
+    
 }

@@ -11,6 +11,10 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.codec.EncoderException;
+import org.apache.commons.codec.language.ColognePhonetic;
+import org.apache.commons.codec.language.Metaphone;
+import org.apache.commons.codec.language.Nysiis;
+import org.apache.commons.codec.language.Soundex;
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder;
 import org.apache.commons.codec.language.bm.Languages;
 import org.apache.commons.codec.language.bm.Languages.LanguageSet;
@@ -62,14 +66,27 @@ public class WordUtils {
     
     public static String lastSound(String word){
         String modifiedWord = word.trim().toLowerCase().replaceAll("\\W", "");
-        PhoneticEngine pe = new PhoneticEngine(NameType.GENERIC,RuleType.EXACT,false);
-        String returnString = pe.encode(word);
         
-        Matcher m = Pattern.compile(".*?([^aeiouy]{0,1}[aeiouy]+[^aeiouy]*)$").matcher(returnString);
-        if (m.matches()){
-         returnString = m.group(1);
-        }
+        Nanaphone np = new Nanaphone();
+        String returnString = np.getRhymingPart(modifiedWord);
+        
+        //String returnString = word;
+        
+        //PhoneticEngine pe = new PhoneticEngine(NameType.GENERIC,RuleType.EXACT,true);
+        //String returnString = pe.encode(word);
+        
+        //Nanaphone np = new Nanaphone();
+        //String returnString = np.encode(word);
+        
+        //System.out.println(returnString);
+        
+//        Matcher m = Pattern.compile(".*?([^aeiouy]{0,1}[aeiouy]+[^aeiouy]*)$").matcher(returnString);
+//        if (m.matches()){
+//          returnString = m.group(1);
+//        }
 
+        //System.out.println(returnString);
+        
         //LanguageSet ls = new LanguageSet() {}
         
         
