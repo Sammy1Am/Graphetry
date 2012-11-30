@@ -34,6 +34,9 @@ public class CorpusManagement {
             
             long counter = 0;
             
+            System.out.println("Begin reading file \""+filePath+"\".  Lines read:");
+            System.out.print("0");
+            
             while (sentences.hasNext()){
                 String nextSentence = sentences.next();
                 nextSentence = nextSentence.replaceAll("[\\r\\n]+", " "); // Replace line-breaks with spaces.
@@ -49,11 +52,11 @@ public class CorpusManagement {
                 counter++;
                 
                 if (counter%100 == 0){
-                    System.out.println(counter);
+                    System.out.print("\r"+counter);
                 }
             }
             
-            System.out.println("Finished reading!");
+            System.out.println("\rFinished reading!");
             
         } catch (FileNotFoundException ex) {
             Logger.getLogger(CorpusManagement.class.getName()).log(Level.SEVERE, null, ex);

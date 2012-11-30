@@ -31,7 +31,7 @@ public class Graphetry {
      */
     public static void main(String[] args) {
 
-        DatabaseControl dbc = new DatabaseControl("gdbfolder");
+        DatabaseControl dbc = new DatabaseControl("gdbdir");
         CorpusManagement corpMan = new CorpusManagement(dbc);
 
         boolean running = true;
