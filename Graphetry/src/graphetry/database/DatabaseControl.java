@@ -54,6 +54,7 @@ public class DatabaseControl {
     }
 
     private DatabaseControl(String dbPath, int order) {
+        System.out.println("Initializing database of order "+order+"...");
         //this.ORDER = order;
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(dbPath);
         engine = new ExecutionEngine(graphDb);
@@ -61,8 +62,13 @@ public class DatabaseControl {
         //keywordIndex = graphDb.index().forNodes("keyword");
         //userIndex = graphDb.index().forNodes("user");
         registerShutdownHook(graphDb);
+        System.out.println("Database initialized.");
     }
 
+    /**
+     * Writes an array of pre-processed, cleaned, words to the graph database.
+     * @param inputArray 
+     */
     public void writeArrayToGraph(String[] inputArray) {
         if (inputArray.length < ORDER + 1) {
             throw new IllegalArgumentException("Input array must be at least " + (ORDER + 1) + " items long (ORDER+1)");
@@ -101,7 +107,12 @@ public class DatabaseControl {
                 // Add to working nodes
                 workingNodes[i] = newNode;
 
-                // Create relationships, looking back
+                /* Create relationships, looking back.
+                 * So for sentence A B C D:
+                 * A -3-> D
+                 * B -2-> D
+                 * C -1-> D
+                 */
                 for (int r = i - Math.min(i, ORDER); r < i; r++) {
                     workingNodes[r].createRelationshipTo(workingNodes[i], RelTypes.values()[i - r]);
                 }
@@ -113,10 +124,23 @@ public class DatabaseControl {
 
     }
 
+    /**
+     * Finds all rhyming nodes (regardless of end-property), and returns as a
+     * String array.
+     * @param inputWord
+     * @return 
+     */
     public String[] findRhymingWords(String inputWord){
         return nodesToStringArray(findRhymingNodes(inputWord,false));
     }
     
+    /**
+     * Searches on the phoneme index to find words that rhyme with the inputWord.
+     * If endNodesOnly is true, it will only search on words that end a phrase.
+     * @param inputWord
+     * @param endNodesOnly
+     * @return 
+     */
     public Node[] findRhymingNodes(String inputWord, boolean endNodesOnly){
         IndexHits<Node> rhymeHits;
         if (endNodesOnly){
