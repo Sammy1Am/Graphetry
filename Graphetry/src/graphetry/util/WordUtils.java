@@ -4,23 +4,13 @@
  */
 package graphetry.util;
 
+import com.sun.speech.freetts.lexicon.LetterToSound;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.commons.codec.EncoderException;
-import org.apache.commons.codec.language.ColognePhonetic;
-import org.apache.commons.codec.language.Metaphone;
-import org.apache.commons.codec.language.Nysiis;
-import org.apache.commons.codec.language.Soundex;
-import org.apache.commons.codec.language.bm.BeiderMorseEncoder;
-import org.apache.commons.codec.language.bm.Languages;
-import org.apache.commons.codec.language.bm.Languages.LanguageSet;
-import org.apache.commons.codec.language.bm.NameType;
-import org.apache.commons.codec.language.bm.PhoneticEngine;
-import org.apache.commons.codec.language.bm.RuleType;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  *
@@ -64,36 +54,12 @@ public class WordUtils {
         return syllableCount;
     }
     
-    public static String lastSound(String word){
+    public static String lastSound(LetterToSound lts, int numberOfPhonemes, String word){
         String modifiedWord = word.trim().toLowerCase().replaceAll("\\W", "");
         
-        Nanaphone np = new Nanaphone();
-        String returnString = np.getRhymingPart(modifiedWord);
         
-        //String returnString = word;
-        
-        //PhoneticEngine pe = new PhoneticEngine(NameType.GENERIC,RuleType.EXACT,true);
-        //String returnString = pe.encode(word);
-        
-        //Nanaphone np = new Nanaphone();
-        //String returnString = np.encode(word);
-        
-        //System.out.println(returnString);
-        
-//        Matcher m = Pattern.compile(".*?([^aeiouy]{0,1}[aeiouy]+[^aeiouy]*)$").matcher(returnString);
-//        if (m.matches()){
-//          returnString = m.group(1);
-//        }
-
-        //System.out.println(returnString);
-        
-        //LanguageSet ls = new LanguageSet() {}
-        
-        
-        //BeiderMorseEncoder bme = new BeiderMorseEncoder();
-        
-        //LanguageSet ls = LanguageSet.from(Languages.getInstance("english").getLanguages());
-            
+        String[] phones = lts.getPhones(modifiedWord, null);
+        String returnString = StringUtils.join(Arrays.copyOfRange(phones,Math.max(0, phones.length-numberOfPhonemes) ,phones.length), ".");   
         
         return returnString;
     }

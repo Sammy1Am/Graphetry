@@ -4,18 +4,17 @@
  */
 package graphetry;
 
+import com.sun.speech.freetts.lexicon.LetterToSoundImpl;
 import graphetry.database.CorpusManagement;
 import graphetry.database.DatabaseControl;
 import graphetry.util.WordUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.RelationshipType;
 
 /**
  *
@@ -29,8 +28,11 @@ public class Graphetry {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
+        LetterToSoundImpl lts = new LetterToSoundImpl(new URL("jar:file:lib/freetts/cmudict04.jar!/com/sun/speech/freetts/en/us/cmudict04_lts.bin"), true);
+
+        
         DatabaseControl dbc = new DatabaseControl("gdbdir");
         CorpusManagement corpMan = new CorpusManagement(dbc);
 
@@ -55,7 +57,7 @@ public class Graphetry {
                     String response = StringUtils.join(dbc.getRandomSentence(), " ");
                     System.out.println(BOLD + response + PLAIN);
                 } else {
-                    System.out.println(BOLD + WordUtils.lastSound(inputLine) + PLAIN);
+                    System.out.println(BOLD + WordUtils.lastSound(lts, 3, inputLine) + PLAIN);
                     System.out.println(BOLD + StringUtils.join(dbc.findRhymingWords(inputLine),", ") + PLAIN);
 
                     String[] inputWords = WordUtils.justWords(inputLine);
