@@ -61,7 +61,7 @@ public class Graphetry {
                     //Learn sentence.
                     dbc.writeArrayToGraph(WordUtils.justWords(inputLine));
                     
-                    System.out.println(BOLD + WordUtils.lastSound(lts, 3, inputLine) + PLAIN);
+                    System.out.println(BOLD + WordUtils.lastSound(lts, 2, inputLine) + PLAIN);
                     System.out.println(BOLD + StringUtils.join(dbc.findRhymingWords(inputLine),", ") + PLAIN);
 
                     String[] inputWords = WordUtils.justWords(inputLine);

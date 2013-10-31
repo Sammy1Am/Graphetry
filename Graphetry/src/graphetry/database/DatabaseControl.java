@@ -37,7 +37,7 @@ public class DatabaseControl {
     private final int ORDER = 2;
     private final Index<Node> nodeIndex;
     private LetterToSoundImpl lts;
-    private final static int RHYME_PHONES = 3; // Number of metaphone characters to store for rhyming.
+    private final static int RHYME_PHONES = 2; // Number of metaphone characters to store for rhyming.
 
     private static enum RelTypes implements RelationshipType {
 
@@ -46,8 +46,10 @@ public class DatabaseControl {
     private static String P_WORD = "wordkey";
     private static String P_SYLLABLES = "syllables";
     private static String P_END = "endnode";
+    private static String P_START = "startnode";
     private static String I_WORD = "word";
     private static String I_END = "endnode";
+    private static String I_START = "startnode";
     private static String I_PHON = "phoneme";
 
     public DatabaseControl(String dbPath) {
@@ -64,8 +66,8 @@ public class DatabaseControl {
         //userIndex = graphDb.index().forNodes("user");
         registerShutdownHook(graphDb);
         System.out.println("Database initialized.");
-        
-        
+
+
         try {
             System.out.println("Initializing g2p...");
             lts = new LetterToSoundImpl(new URL("jar:file:lib/freetts/cmudict04.jar!/com/sun/speech/freetts/en/us/cmudict04_lts.bin"), true);
@@ -73,7 +75,7 @@ public class DatabaseControl {
         } catch (IOException ex) {
             Logger.getLogger(DatabaseControl.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
     }
 
     /**
@@ -102,19 +104,17 @@ public class DatabaseControl {
                     newNode.setProperty(P_SYLLABLES, WordUtils.countSyllables(inputArray[i]));
                     nodeIndex.putIfAbsent(newNode, I_WORD, inputArray[i]);
                     nodeIndex.add(newNode, I_PHON, WordUtils.lastSound(lts, RHYME_PHONES, inputArray[i]));
+                }
+                // If it's first, and hasn't been already, index it as first
+                if (i == 0 && !newNode.hasProperty(P_START)) {
+                    nodeIndex.add(newNode, I_START, "START");
+                    newNode.setProperty(P_START, "START");
+                }
 
-
-                    // If it's first, index it as first
-                    if (i == 0) {
-                        nodeIndex.add(newNode, I_END, "START");
-                        newNode.setProperty(P_END, "START");
-                    }
-
-                    // If it's last, index it as last
-                    if (i == inputArray.length - 1) {
-                        nodeIndex.add(newNode, I_END, "END");
-                        newNode.setProperty(P_END, "END");
-                    }
+                // If it's last, and hasn't been already, index it as last
+                if (i == inputArray.length - 1 && !newNode.hasProperty(P_END)) {
+                    nodeIndex.add(newNode, I_END, "END");
+                    newNode.setProperty(P_END, "END");
                 }
                 // Add to working nodes
                 workingNodes[i] = newNode;
@@ -213,7 +213,7 @@ public class DatabaseControl {
             workingNodes.add(options.get(new Random().nextInt(options.size())));
         }
 
-        while (!workingNodes.get(0).hasProperty(P_END) || !workingNodes.get(0).getProperty(P_END).equals("START")) {
+        while (!workingNodes.get(0).hasProperty(P_START) || !workingNodes.get(0).getProperty(P_START).equals("START")) {
             ArrayList<Node> options = getPreceedingNodes(workingNodes.subList(0, Math.min(workingNodes.size(), ORDER)).toArray(new Node[0]));
 
             workingNodes.add(0, options.get(new Random().nextInt(options.size())));
