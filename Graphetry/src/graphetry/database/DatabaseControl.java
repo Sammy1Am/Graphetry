@@ -162,9 +162,9 @@ public class DatabaseControl {
             rhymeHits = nodeIndex.query(I_PHON + ":" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord) + " AND " + I_END + ":" + "END");
 
             // If there's no matches, try again with a looser query
-            if (rhymeHits.size() < 1) {
-                rhymeHits = nodeIndex.query(I_PHON + ":*" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord).substring(1) + " AND " + I_END + ":" + "END");
-            }
+            //if (rhymeHits.size() < 1) {
+            //   rhymeHits = nodeIndex.query(I_PHON + ":*" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord).substring(1) + " AND " + I_END + ":" + "END");
+            //}
         } else {
             rhymeHits = nodeIndex.query(I_PHON, WordUtils.lastSound(lts, RHYME_PHONES, inputWord));
         }

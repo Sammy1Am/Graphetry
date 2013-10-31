@@ -57,6 +57,10 @@ public class Graphetry {
                     String response = StringUtils.join(dbc.getRandomSentence(), " ");
                     System.out.println(BOLD + response + PLAIN);
                 } else {
+                    
+                    //Learn sentence.
+                    dbc.writeArrayToGraph(WordUtils.justWords(inputLine));
+                    
                     System.out.println(BOLD + WordUtils.lastSound(lts, 3, inputLine) + PLAIN);
                     System.out.println(BOLD + StringUtils.join(dbc.findRhymingWords(inputLine),", ") + PLAIN);
 
