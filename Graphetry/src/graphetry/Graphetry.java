@@ -7,6 +7,7 @@ package graphetry;
 import com.sun.speech.freetts.lexicon.LetterToSoundImpl;
 import graphetry.database.CorpusManagement;
 import graphetry.database.DatabaseControl;
+import graphetry.database.NodeSentence;
 import graphetry.util.WordUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -54,9 +55,29 @@ public class Graphetry {
                         Logger.getLogger(Graphetry.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 } else if (inputLine.equalsIgnoreCase("/rand")) {
-                    String response = StringUtils.join(dbc.getRandomSentence(), " ");
+                    String response = StringUtils.join(dbc.getRandomSentence().toStringArray(), " ");
                     System.out.println(BOLD + response + PLAIN);
-                } else {
+                } else if (inputLine.equalsIgnoreCase("/couplet")){
+                    NodeSentence lineA = null;
+                    NodeSentence lineB = null;
+                    boolean foundMatch = false;
+                    for (int i =0;i<10;i++){
+                        lineA = dbc.getRandomSentence();
+                        for (int x =0;x<10;x++){
+                            lineB = dbc.buildRhymingSentence(lineA.toStringArray()[lineA.toStringArray().length-1]);
+                            if (lineA.totalSyllables() == lineB.totalSyllables()){
+                                foundMatch = true;
+                                i=10;
+                                x=10;
+                            }
+                        }
+                    }
+                    if (foundMatch){
+                        System.out.println(StringUtils.join(lineA.toStringArray()," "));
+                        System.out.println(StringUtils.join(lineB.toStringArray()," "));
+                    }
+                }
+                else {
                     
                     //Learn sentence.
                     dbc.writeArrayToGraph(WordUtils.justWords(inputLine));
@@ -66,7 +87,9 @@ public class Graphetry {
 
                     String[] inputWords = WordUtils.justWords(inputLine);
                     
-                    String response = StringUtils.join(dbc.buildRhymingSentence(inputWords[inputWords.length-1])," ");
+                    NodeSentence outputSentence = dbc.buildRhymingSentence(inputWords[inputWords.length-1]);
+                    System.out.println(outputSentence.totalSyllables());
+                    String response = StringUtils.join(outputSentence.toStringArray()," ");
                     
                     //String response = ArrayUtils.toString(WordUtils.justWords(inputLine));
                     //dbc.writeArrayToGraph(WordUtils.justWords(inputLine));

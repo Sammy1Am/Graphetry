@@ -38,19 +38,25 @@ public class DatabaseControl {
     private final Index<Node> nodeIndex;
     private LetterToSoundImpl lts;
     private final static int RHYME_PHONES = 2; // Number of metaphone characters to store for rhyming.
+    private final static int SENTENCE_LIMIT = 500;  // Maximum sentence length in words.
+
+    private static enum BuildDirection {
+
+        BOTH, FORWARD_ONLY, BACKWARD_ONLY
+    };
 
     private static enum RelTypes implements RelationshipType {
 
         ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX
     }
-    private static String P_WORD = "wordkey";
-    private static String P_SYLLABLES = "syllables";
+    public static String P_WORD = "wordkey";
+    public static String P_SYLLABLES = "syllables";
     private static String P_END = "endnode";
-    private static String P_START = "startnode";
     private static String I_WORD = "word";
     private static String I_END = "endnode";
-    private static String I_START = "startnode";
     private static String I_PHON = "phoneme";
+    private Node START_NODE;
+    private Node END_NODE;
 
     public DatabaseControl(String dbPath) {
         this(dbPath, 2);
@@ -62,6 +68,7 @@ public class DatabaseControl {
         graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(dbPath);
         engine = new ExecutionEngine(graphDb);
         nodeIndex = graphDb.index().forNodes("node_idx");
+        verifyEndNodeExistance();
         //keywordIndex = graphDb.index().forNodes("keyword");
         //userIndex = graphDb.index().forNodes("user");
         registerShutdownHook(graphDb);
@@ -78,6 +85,27 @@ public class DatabaseControl {
 
     }
 
+    private void verifyEndNodeExistance() {
+        Transaction tx = graphDb.beginTx();
+        try {
+            START_NODE = nodeIndex.get(I_END, "START").getSingle();
+            if (START_NODE == null) {
+                START_NODE = graphDb.createNode();
+                START_NODE.setProperty(P_END, "START");
+                nodeIndex.putIfAbsent(START_NODE, I_END, "START");
+            }
+            END_NODE = nodeIndex.get(I_END, "END").getSingle();
+            if (END_NODE == null) {
+                END_NODE = graphDb.createNode();
+                END_NODE.setProperty(P_END, "END");
+                nodeIndex.putIfAbsent(END_NODE, I_END, "END");
+            }
+            tx.success();
+        } finally {
+            tx.finish();
+        }
+    }
+
     /**
      * Writes an array of pre-processed, cleaned, words to the graph database.
      *
@@ -90,31 +118,28 @@ public class DatabaseControl {
 
         Transaction tx = graphDb.beginTx();
         try {
-            Node[] workingNodes = new Node[inputArray.length];
+            Node[] workingNodes = new Node[inputArray.length + 2];// Add two for end nodes.
 
-            for (int i = 0; i < inputArray.length; i++) {
-                // Create Node
+
+            for (int i = 0; i < workingNodes.length; i++) {
                 Node newNode;
-                Node foundNode = nodeIndex.get(I_WORD, inputArray[i]).getSingle();
-                if (foundNode != null) {
-                    newNode = foundNode;
-                } else {
-                    newNode = graphDb.createNode();
-                    newNode.setProperty(P_WORD, inputArray[i]);
-                    newNode.setProperty(P_SYLLABLES, WordUtils.countSyllables(inputArray[i]));
-                    nodeIndex.putIfAbsent(newNode, I_WORD, inputArray[i]);
-                    nodeIndex.add(newNode, I_PHON, WordUtils.lastSound(lts, RHYME_PHONES, inputArray[i]));
-                }
-                // If it's first, and hasn't been already, index it as first
-                if (i == 0 && !newNode.hasProperty(P_START)) {
-                    nodeIndex.add(newNode, I_START, "START");
-                    newNode.setProperty(P_START, "START");
-                }
 
-                // If it's last, and hasn't been already, index it as last
-                if (i == inputArray.length - 1 && !newNode.hasProperty(P_END)) {
-                    nodeIndex.add(newNode, I_END, "END");
-                    newNode.setProperty(P_END, "END");
+                if (i == 0) { // Use start node.
+                    newNode = START_NODE;
+                } else if (i == workingNodes.length - 1) { // Use end node
+                    newNode = END_NODE;
+                } else {
+                    // Find/Create new word node
+                    Node foundNode = nodeIndex.get(I_WORD, inputArray[i - 1]).getSingle();
+                    if (foundNode != null) {
+                        newNode = foundNode;
+                    } else {
+                        newNode = graphDb.createNode();
+                        newNode.setProperty(P_WORD, inputArray[i - 1]);
+                        newNode.setProperty(P_SYLLABLES, WordUtils.countSyllables(inputArray[i - 1]));
+                        nodeIndex.putIfAbsent(newNode, I_WORD, inputArray[i - 1]);
+                        nodeIndex.add(newNode, I_PHON, WordUtils.lastSound(lts, RHYME_PHONES, inputArray[i - 1]));
+                    }
                 }
                 // Add to working nodes
                 workingNodes[i] = newNode;
@@ -157,68 +182,77 @@ public class DatabaseControl {
      * @return
      */
     public Node[] findRhymingNodes(String inputWord, boolean endNodesOnly) {
-        IndexHits<Node> rhymeHits;
-        if (endNodesOnly) {
-            rhymeHits = nodeIndex.query(I_PHON + ":" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord) + " AND " + I_END + ":" + "END");
-
-            // If there's no matches, try again with a looser query
-            //if (rhymeHits.size() < 1) {
-            //   rhymeHits = nodeIndex.query(I_PHON + ":*" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord).substring(1) + " AND " + I_END + ":" + "END");
-            //}
-        } else {
-            rhymeHits = nodeIndex.query(I_PHON, WordUtils.lastSound(lts, RHYME_PHONES, inputWord));
-        }
 
         ArrayList<Node> rhymingNodes = new ArrayList<Node>();
+        if (endNodesOnly) {
+            //rhymeHits = nodeIndex.query(I_PHON + ":" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord) + " AND " + I_END + ":" + "END");
+            ExecutionResult rhymeResult = engine.execute("START a=node:node_idx(" + I_PHON + "=\"" + WordUtils.lastSound(lts, RHYME_PHONES, inputWord) + "\") MATCH a-[:ONE]->end WHERE end." + P_END + "! = \"END\" RETURN a");
 
-        for (Node n : rhymeHits) {
-            rhymingNodes.add(n);
+            Iterator<Node> n_column = rhymeResult.columnAs("a");
+            for (Node n : IteratorUtil.asIterable(n_column)) {
+                rhymingNodes.add(n);
+            }
+        } else {
+            IndexHits<Node> rhymeHits = nodeIndex.query(I_PHON, WordUtils.lastSound(lts, RHYME_PHONES, inputWord));
+
+            for (Node n : rhymeHits) {
+                rhymingNodes.add(n);
+            }
         }
 
         return rhymingNodes.toArray(new Node[rhymingNodes.size()]);
     }
 
-    public String[] buildRhymingSentence(String inputWord) {
+    public NodeSentence buildRhymingSentence(String inputWord) {
         Node[] rhymingEnds = findRhymingNodes(inputWord, true);
 
         if (rhymingEnds.length > 0) {
-            Node[] sentenceOption = randomBuild(new Node[]{rhymingEnds[new Random().nextInt(rhymingEnds.length)]});
-            return nodesToStringArray(sentenceOption);
+            Node[] sentenceOption = randomBuild(new Node[]{rhymingEnds[new Random().nextInt(rhymingEnds.length)]}, BuildDirection.BACKWARD_ONLY);
+            return new NodeSentence(sentenceOption);
         } else {
             return null;
         }
     }
 
-    public String[] getRandomSentence() {
+    public NodeSentence getRandomSentence() {
         //TODO Make this more random...
 
         ArrayList<ArrayList<Node>> seedOptions = getEndings();
 
         Node[] seedNodes = seedOptions.get(new Random().nextInt(seedOptions.size())).toArray(new Node[0]);
 
-        Node[] resultNodes = randomBuild(seedNodes);
+        Node[] resultNodes = randomBuild(seedNodes, BuildDirection.BOTH);
 
-        return nodesToStringArray(resultNodes);
+        return new NodeSentence(resultNodes);
 
     }
 
-    private Node[] randomBuild(Node[] seedNodes) {
+    //TODO: Allow specificaion of directoin (forward, back, both)
+    private Node[] randomBuild(Node[] seedNodes, BuildDirection dir) {
 
         ArrayList<Node> workingNodes = new ArrayList<Node>(Arrays.asList(seedNodes));
 
-        //TODO Sometimes keep going past end if there are more relationships.
-        while (!workingNodes.get(workingNodes.size() - 1).hasProperty(P_END) || !workingNodes.get(workingNodes.size() - 1).getProperty(P_END).equals("END")) {
-            ArrayList<Node> options = getFollowingNodes(workingNodes.subList(workingNodes.size() - Math.min(1, ORDER), workingNodes.size()).toArray(new Node[0]));
 
+        while ((dir.equals(BuildDirection.FORWARD_ONLY) || dir.equals(BuildDirection.BOTH))
+                && !(workingNodes.get(workingNodes.size() - 1).hasProperty(P_END) && workingNodes.get(workingNodes.size() - 1).getProperty(P_END).equals("END"))) {
+            ArrayList<Node> options = getFollowingNodes(workingNodes.subList(workingNodes.size() - Math.min(1, ORDER), workingNodes.size()).toArray(new Node[0]));
+            // If we got nothing back, hard-break TODO: add "--" to these.
+            if (options.isEmpty()) {
+                break;
+            }
             workingNodes.add(options.get(new Random().nextInt(options.size())));
         }
 
-        while (!workingNodes.get(0).hasProperty(P_START) || !workingNodes.get(0).getProperty(P_START).equals("START")) {
+        while ((dir.equals(BuildDirection.BACKWARD_ONLY) || dir.equals(BuildDirection.BOTH))
+                && !(workingNodes.get(0).hasProperty(P_END) && workingNodes.get(0).getProperty(P_END).equals("START"))) {
             ArrayList<Node> options = getPreceedingNodes(workingNodes.subList(0, Math.min(workingNodes.size(), ORDER)).toArray(new Node[0]));
-
+            // If we got nothing back, hard-break TODO: add "--" to these.
+            if (options.isEmpty()) {
+                break;
+            }
             workingNodes.add(0, options.get(new Random().nextInt(options.size())));
         }
-
+        
         return workingNodes.toArray(new Node[workingNodes.size()]);
     }
 
@@ -301,7 +335,9 @@ public class DatabaseControl {
         ArrayList<String> returnTokens = new ArrayList<String>();
 
         for (int i = 0; i < inputNodeArray.length; i++) {
-            returnTokens.add((String) inputNodeArray[i].getProperty(P_WORD));
+            if (inputNodeArray[i].hasProperty(P_WORD)){// If there's no word on this node, don't try to string-ify it.  e.g. end nodes
+                returnTokens.add((String) inputNodeArray[i].getProperty(P_WORD));
+            }
         }
 
         return returnTokens.toArray(new String[returnTokens.size()]);
